@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Get Videos</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="workspace">
+        <div class="masthead">
+          <p class="eyebrow">URL Downloader</p>
+          <h1>按网站独立解析和下载</h1>
+        </div>
+
+        <form id="resolveForm" class="url-bar">
+          <input id="urlInput" name="url" type="url" autocomplete="url" placeholder="粘贴 B 站、YouTube、Pixiv 网址" required>
+          <button type="submit">解析</button>
+        </form>
+
+        <section id="providerPanel" class="provider-panel is-empty">
+          <div>
+            <p class="muted">等待解析</p>
+            <h2>输入网址后会自动识别站点流程</h2>
+          </div>
+        </section>
+
+        <section class="jobs-section">
+          <div class="section-title">
+            <h2>下载任务</h2>
+            <button id="refreshJobs" type="button" class="ghost-button">刷新</button>
+          </div>
+          <div id="jobsList" class="jobs-list"></div>
+        </section>
+      </section>
+    </main>
+
+    <script type="module" src="/app.js"></script>
+  </body>
+</html>

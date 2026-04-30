@@ -1,0 +1,297 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7f4;
+  --panel: #ffffff;
+  --ink: #17201a;
+  --muted: #667166;
+  --line: #dfe7dc;
+  --accent: #236c59;
+  --accent-strong: #174b3e;
+  --danger: #b43434;
+  --shadow: 0 18px 48px rgba(22, 40, 29, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 40px 20px;
+}
+
+.workspace {
+  width: min(1040px, 100%);
+  margin: 0 auto;
+}
+
+.masthead {
+  margin-bottom: 24px;
+}
+
+.eyebrow,
+.muted {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.masthead h1 {
+  margin: 8px 0 0;
+  font-size: clamp(34px, 6vw, 64px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.url-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+}
+
+.url-bar input {
+  min-width: 0;
+  border: 0;
+  padding: 16px;
+  color: var(--ink);
+  background: transparent;
+  outline: none;
+}
+
+button {
+  border: 0;
+  border-radius: 6px;
+  padding: 0 18px;
+  min-height: 44px;
+  background: var(--accent);
+  color: white;
+  cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease;
+}
+
+button:hover {
+  background: var(--accent-strong);
+}
+
+button:disabled {
+  cursor: progress;
+  opacity: 0.72;
+}
+
+.ghost-button {
+  background: transparent;
+  border: 1px solid var(--line);
+  color: var(--ink);
+}
+
+.ghost-button:hover {
+  background: #edf2ea;
+}
+
+.provider-panel,
+.jobs-section {
+  margin-top: 18px;
+  padding: 22px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 28px rgba(22, 40, 29, 0.07);
+}
+
+.provider-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 420px);
+  gap: 20px;
+  align-items: start;
+}
+
+.provider-panel.is-empty,
+.provider-panel.has-error {
+  display: block;
+}
+
+.provider-panel h2,
+.section-title h2 {
+  margin: 6px 0 0;
+  font-size: 22px;
+  line-height: 1.25;
+  letter-spacing: 0;
+}
+
+.requirements {
+  margin: 14px 0 0;
+  color: var(--muted);
+}
+
+code {
+  display: inline-block;
+  padding: 3px 7px;
+  border-radius: 5px;
+  background: #edf2ea;
+  color: var(--accent-strong);
+}
+
+.download-form {
+  display: grid;
+  gap: 14px;
+}
+
+.format-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.format-option {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.format-option input {
+  margin-top: 4px;
+  accent-color: var(--accent);
+}
+
+.format-option span {
+  display: grid;
+  gap: 4px;
+}
+
+.format-option small {
+  color: var(--muted);
+}
+
+.section-title,
+.job-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.jobs-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.empty-list {
+  padding: 18px 0;
+}
+
+.job-card {
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.job-card h3 {
+  max-width: 720px;
+  margin: 4px 0 0;
+  font-size: 16px;
+  overflow-wrap: anywhere;
+}
+
+.status {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 13px;
+  background: #edf2ea;
+}
+
+.status-running,
+.status-queued {
+  color: #7a4b00;
+  background: #fff0cf;
+}
+
+.status-completed {
+  color: #15533d;
+  background: #dff3e8;
+}
+
+.status-failed {
+  color: var(--danger);
+  background: #ffe5e2;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin: 14px 0 0;
+}
+
+dt {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+dd {
+  margin: 3px 0 0;
+  overflow-wrap: anywhere;
+}
+
+pre {
+  max-height: 260px;
+  overflow: auto;
+  margin: 14px 0 0;
+  padding: 12px;
+  border-radius: 6px;
+  background: #111812;
+  color: #dce9dc;
+  white-space: pre-wrap;
+}
+
+.command {
+  color: #bfe7d7;
+}
+
+.error-text {
+  color: var(--danger);
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 760px) {
+  .app-shell {
+    padding: 24px 14px;
+  }
+
+  .url-bar,
+  .provider-panel,
+  dl {
+    grid-template-columns: 1fr;
+  }
+
+  .url-bar button,
+  .download-form button {
+    width: 100%;
+  }
+
+  .section-title,
+  .job-topline {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

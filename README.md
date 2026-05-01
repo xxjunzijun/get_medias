@@ -8,6 +8,7 @@
 - Bilibili：选择下载 MP4 视频或仅下载 MP3 音频。
 - YouTube：选择下载 MP4 视频或仅下载 MP3 音频。
 - Pixiv：下载当前页面可解析的图片资源。
+- 每个下载任务会放进独立文件夹。Bilibili / YouTube 使用视频标题，Pixiv 使用作品标题；拿不到标题时会退回到任务 ID。
 - 每个站点逻辑独立在 `src/providers/`，后续加新网站时新增 provider 并在 `src/providers/index.js` 注册即可。
 
 ## 运行
@@ -17,6 +18,63 @@ node server.js
 ```
 
 然后打开 <http://localhost:3000>。
+
+## Linux 私有部署
+
+当前项目可以部署在 Linux 上，推荐先作为私有服务使用，不要直接裸露到公网。
+
+以 Ubuntu / Debian 为例：
+
+```bash
+sudo apt update
+sudo apt install -y nodejs npm ffmpeg python3 python3-pip pipx git
+pipx install yt-dlp
+pipx install gallery-dl
+pipx ensurepath
+```
+
+重新打开终端，确认工具可用：
+
+```bash
+node --version
+yt-dlp --version
+ffmpeg -version
+gallery-dl --version
+```
+
+拉取项目并启动：
+
+```bash
+git clone https://github.com/xxjunzijun/get_medias.git
+cd get_medias
+node server.js
+```
+
+然后访问：
+
+```text
+http://服务器IP:3000
+```
+
+如果部署在云服务器上，更建议用 SSH 隧道访问：
+
+```bash
+ssh -L 3000:localhost:3000 user@your-server
+```
+
+然后在本机浏览器打开：
+
+```text
+http://localhost:3000
+```
+
+Linux 服务器没有桌面环境时，Pixiv 授权里的「用系统浏览器打开」通常不可用。可以在网页里复制授权链接，用本机浏览器完成登录，再把 callback URL 或 `code` 粘回网页提交。授权成功后，`gallery-dl` 配置会写入运行服务用户的：
+
+```bash
+~/.config/gallery-dl/config.json
+```
+
+生产化部署前建议补上登录鉴权、任务持久化、下载文件清理、限流，以及 systemd 或 Docker 部署配置。
 
 ## 下载依赖
 
@@ -33,7 +91,19 @@ pipx install yt-dlp
 pipx install gallery-dl
 ```
 
-Pixiv 下载通常需要登录态，建议按 `gallery-dl` 文档配置 cookies 或账号认证。
+Pixiv 下载通常需要登录态。网页里解析 Pixiv URL 后，可以在 Pixiv 授权卡片里启动 `gallery-dl oauth:pixiv` 流程。
+
+也可以在终端手动运行：
+
+```bash
+gallery-dl oauth:pixiv
+```
+
+按终端提示登录 Pixiv 并授权后，`gallery-dl` 会保存 refresh token，之后网页里的 Pixiv 下载任务就能复用这个登录态。
+
+Safari 在 Pixiv 授权后可能提示“网址无效”。这通常是正常的，复制地址栏或 Network 面板里包含 `code=` 的 callback 地址，再粘贴回网页即可。
+
+如果 Safari 跳转后 Network 记录消失，需要在点击「继续使用此账号」前启用 Network 面板里的 Preserve Log / 保留日志。也可以复制网页里的授权链接到 Chrome 或 Edge，打开 DevTools Network 并勾选 Preserve log 后重试。
 
 ## 扩展新网站
 

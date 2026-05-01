@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { safeSegment } from "../pathUtils.js";
+
 export const pixivProvider = {
   id: "pixiv",
   name: "Pixiv",
@@ -20,20 +22,31 @@ export const pixivProvider = {
       ],
       defaultFormat: "images",
       requirements: ["gallery-dl"],
+      auth: {
+        type: "pixiv-oauth",
+        label: "Pixiv 授权",
+        description: "首次下载 Pixiv 需要登录授权。授权成功后，gallery-dl 会保存 refresh token，后续下载会自动复用。",
+      },
     };
   },
 
-  createDownloadPlan({ url, outputDir }) {
+  createDownloadPlan({ jobId, url, outputDir }) {
     const siteDir = path.join(outputDir, "pixiv");
+    const fallbackDir = safeSegment(jobId, "pixiv-task");
+    const taskTemplate = "{title|id}";
     return {
       command: "gallery-dl",
       args: [
-        "--directory",
+        "--destination",
         siteDir,
+        "--directory",
+        taskTemplate,
+        "--filename",
+        "{filename}.{extension}",
         url,
       ],
       cwd: siteDir,
-      expectedOutput: siteDir,
+      expectedOutput: path.join(siteDir, taskTemplate),
     };
   },
 };

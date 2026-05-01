@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import { resolveProvider } from "./src/providers/index.js";
 import { createJob, getJob, listJobs } from "./src/jobStore.js";
+import { getOauthSession, openPixivOauthInSystemBrowser, startPixivOauth, submitPixivOauthCode } from "./src/oauthStore.js";
 import { startDownload } from "./src/runner.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -87,6 +88,33 @@ async function router(req, res) {
       const job = createJob(provider.describe(body.url), body);
       startDownload(job, provider, body);
       sendJson(res, 202, { job });
+      return;
+    }
+
+    if (req.method === "POST" && requestUrl.pathname === "/api/oauth/pixiv/start") {
+      sendJson(res, 202, { session: startPixivOauth() });
+      return;
+    }
+
+    if (req.method === "POST" && requestUrl.pathname === "/api/oauth/pixiv/submit") {
+      const { id, code } = await readJson(req);
+      if (!code || !String(code).trim()) {
+        throw new Error("请输入 Pixiv callback 里的 code 或完整 callback URL。");
+      }
+      sendJson(res, 202, { session: await submitPixivOauthCode(id, String(code).trim()) });
+      return;
+    }
+
+    if (req.method === "POST" && requestUrl.pathname === "/api/oauth/pixiv/open") {
+      const { id } = await readJson(req);
+      sendJson(res, 202, { session: openPixivOauthInSystemBrowser(id) });
+      return;
+    }
+
+    const oauthMatch = requestUrl.pathname.match(/^\/api\/oauth\/pixiv\/([^/]+)$/);
+    if (req.method === "GET" && oauthMatch) {
+      const session = getOauthSession(oauthMatch[1]);
+      sendJson(res, session ? 200 : 404, session || { error: "OAuth session not found" });
       return;
     }
 

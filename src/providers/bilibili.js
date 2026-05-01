@@ -1,5 +1,7 @@
 import path from "node:path";
 
+import { safeSegment } from "../pathUtils.js";
+
 export const bilibiliProvider = {
   id: "bilibili",
   name: "Bilibili",
@@ -24,9 +26,11 @@ export const bilibiliProvider = {
     };
   },
 
-  createDownloadPlan({ url, format, outputDir }) {
+  createDownloadPlan({ jobId, url, format, outputDir }) {
     const siteDir = path.join(outputDir, "bilibili");
-    const outputTemplate = path.join(siteDir, "%(title).180B [%(id)s].%(ext)s");
+    const fallbackDir = safeSegment(jobId, "bilibili-task");
+    const taskTemplate = `%(title|${fallbackDir}).180B [%(id)s]`;
+    const outputTemplate = path.join(siteDir, taskTemplate, "%(title).180B [%(id)s].%(ext)s");
     const args = [
       "--newline",
       "--no-playlist",
@@ -45,7 +49,7 @@ export const bilibiliProvider = {
       command: "yt-dlp",
       args,
       cwd: siteDir,
-      expectedOutput: siteDir,
+      expectedOutput: path.join(siteDir, taskTemplate),
     };
   },
 };

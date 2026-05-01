@@ -139,6 +139,73 @@ button:disabled {
   color: var(--muted);
 }
 
+.auth-card {
+  display: grid;
+  gap: 12px;
+  margin: 14px 0 0;
+  padding: 12px 14px;
+  border-left: 3px solid var(--accent);
+  background: #edf2ea;
+  color: var(--accent-strong);
+}
+
+.auth-card p {
+  margin: 4px 0 0;
+}
+
+.auth-card button {
+  justify-self: start;
+}
+
+.oauth-state:empty {
+  display: none;
+}
+
+.oauth-status {
+  display: grid;
+  gap: 8px;
+}
+
+.oauth-fingerprint {
+  color: var(--muted);
+}
+
+.oauth-status a {
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.oauth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.oauth-actions button {
+  min-height: 36px;
+}
+
+.oauth-status ol {
+  margin: 4px 0 0;
+  padding-left: 20px;
+  color: var(--ink);
+}
+
+.oauth-form {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.oauth-form input {
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--ink);
+}
+
 code {
   display: inline-block;
   padding: 3px 7px;
@@ -280,6 +347,7 @@ pre {
 
   .url-bar,
   .provider-panel,
+  .oauth-form,
   dl {
     grid-template-columns: 1fr;
   }

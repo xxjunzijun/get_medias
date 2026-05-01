@@ -9,6 +9,7 @@ const downloadsDir = path.resolve("downloads");
 export function startDownload(job, provider, request) {
   queueMicrotask(() => {
     const plan = provider.createDownloadPlan({
+      jobId: job.id,
       url: request.url,
       format: request.format,
       outputDir: downloadsDir,

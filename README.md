@@ -9,6 +9,7 @@
 - YouTube：选择下载 MP4 视频或仅下载 MP3 音频。
 - Pixiv：下载当前页面可解析的图片资源。
 - 每个下载任务会放进独立文件夹。Bilibili / YouTube 使用视频标题，Pixiv 使用作品标题；拿不到标题时会退回到任务 ID。
+- 可以在网页里浏览 `downloads/` 下已下载的内容，图片会显示预览，音频和视频可以直接播放。
 - 每个站点逻辑独立在 `src/providers/`，后续加新网站时新增 provider 并在 `src/providers/index.js` 注册即可。
 
 ## 运行

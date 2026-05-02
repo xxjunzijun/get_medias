@@ -3,6 +3,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { safeSegment } from "../pathUtils.js";
+import { ytDlpBin } from "../toolBins.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -54,7 +55,7 @@ export const youtubeProvider = {
 
     args.push(url);
     return {
-      command: "yt-dlp",
+      command: ytDlpBin(),
       args,
       cwd: taskDir,
       expectedOutput: taskDir,
@@ -67,7 +68,7 @@ export const youtubeProvider = {
 };
 
 async function readYtDlpMetadata(url) {
-  const { stdout } = await execFileAsync("yt-dlp", [
+  const { stdout } = await execFileAsync(ytDlpBin(), [
     "--dump-single-json",
     "--no-playlist",
     "--skip-download",

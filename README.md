@@ -99,6 +99,21 @@ journalctl -u get-medias -f
 
 服务日志会打印 Pixiv OAuth 失败原因，包括 `fetch` 的底层 `cause` 和是否检测到代理环境变量。
 
+如果 `gallery-dl` / `yt-dlp` 是通过 `pipx` 装的，命令通常在 `~/.local/bin` 下。systemd 不一定会读取登录 shell 的 PATH，建议在服务文件里直接配置绝对路径：
+
+```ini
+Environment=GALLERY_DL_BIN=/home/xiaowu/.local/bin/gallery-dl
+Environment=YT_DLP_BIN=/home/xiaowu/.local/bin/yt-dlp
+Environment=PATH=/home/xiaowu/.local/bin:/usr/local/bin:/usr/bin:/bin
+```
+
+可以用下面命令确认路径：
+
+```bash
+sudo -u xiaowu /home/xiaowu/.local/bin/gallery-dl --version
+sudo -u xiaowu /home/xiaowu/.local/bin/yt-dlp --version
+```
+
 生产化部署前建议补上登录鉴权、任务持久化、下载文件清理、限流，以及 systemd 或 Docker 部署配置。
 
 ## 下载依赖

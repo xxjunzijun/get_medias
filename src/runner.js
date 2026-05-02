@@ -87,7 +87,10 @@ function quoteArg(arg) {
 
 function buildToolError(command, error) {
   if (error.code === "ENOENT") {
-    return `未找到 ${command}。请先安装它，例如：pipx install ${command} 或 brew install ${command}`;
+    const configHint = command.includes("/")
+      ? "请确认这个路径存在且有执行权限。"
+      : "如果工具已安装在 ~/.local/bin，可在 systemd 里配置 GALLERY_DL_BIN 或 YT_DLP_BIN 为绝对路径。";
+    return `未找到 ${command}。${configHint}`;
   }
 
   return error.message;

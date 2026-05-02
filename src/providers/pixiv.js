@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 
 import { galleryDlConfigPath } from "../oauthStore.js";
 import { safeSegment } from "../pathUtils.js";
+import { galleryDlBin } from "../toolBins.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -49,7 +50,7 @@ export const pixivProvider = {
     const taskDir = path.join(siteDir, taskName);
 
     return {
-      command: "gallery-dl",
+      command: galleryDlBin(),
       args: [
         "--config",
         galleryDlConfigPath(),
@@ -70,7 +71,7 @@ export const pixivProvider = {
 };
 
 async function readPixivMetadata(url) {
-  const { stdout } = await execFileAsync("gallery-dl", [
+  const { stdout } = await execFileAsync(galleryDlBin(), [
     "--config",
     galleryDlConfigPath(),
     "--dump-json",

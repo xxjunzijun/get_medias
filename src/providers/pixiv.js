@@ -1,7 +1,11 @@
+import { execFile } from "node:child_process";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import { galleryDlConfigPath } from "../oauthStore.js";
 import { safeSegment } from "../pathUtils.js";
+
+const execFileAsync = promisify(execFile);
 
 export const pixivProvider = {
   id: "pixiv",
@@ -31,25 +35,46 @@ export const pixivProvider = {
     };
   },
 
-  createDownloadPlan({ jobId, url, outputDir }) {
+  async createDownloadPlan({ jobId, url, outputDir }) {
     const siteDir = path.join(outputDir, "pixiv");
-    const fallbackDir = safeSegment(jobId, "pixiv-task");
-    const taskTemplate = "{title|id}";
+    const metadata = await readPixivMetadata(url).catch(() => null);
+    const shortJobId = jobId.split("-")[0];
+    const taskName = safeSegment(
+      [
+        metadata?.title || metadata?.id || "pixiv-task",
+        shortJobId,
+      ].filter(Boolean).join(" "),
+      `pixiv-task ${shortJobId}`,
+    );
+    const taskDir = path.join(siteDir, taskName);
+
     return {
       command: "gallery-dl",
       args: [
         "--config",
         galleryDlConfigPath(),
-        "--destination",
-        siteDir,
         "--directory",
-        taskTemplate,
+        taskDir,
         "--filename",
         "{filename}.{extension}",
         url,
       ],
-      cwd: siteDir,
-      expectedOutput: path.join(siteDir, taskTemplate),
+      cwd: taskDir,
+      expectedOutput: taskDir,
     };
   },
 };
+
+async function readPixivMetadata(url) {
+  const { stdout } = await execFileAsync("gallery-dl", [
+    "--config",
+    galleryDlConfigPath(),
+    "--dump-json",
+    url,
+  ], {
+    maxBuffer: 5 * 1024 * 1024,
+  });
+  const entries = JSON.parse(stdout);
+  const directoryEntry = entries.find((entry) => entry[0] === 2 && entry[1]);
+  return directoryEntry?.[1] || null;
+}

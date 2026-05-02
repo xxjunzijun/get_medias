@@ -7,13 +7,22 @@ import { appendJobOutput, getJob, updateJob } from "./jobStore.js";
 const downloadsDir = path.resolve("downloads");
 
 export function startDownload(job, provider, request) {
-  queueMicrotask(() => {
-    const plan = provider.createDownloadPlan({
-      jobId: job.id,
-      url: request.url,
-      format: request.format,
-      outputDir: downloadsDir,
-    });
+  queueMicrotask(async () => {
+    let plan;
+    try {
+      plan = await provider.createDownloadPlan({
+        jobId: job.id,
+        url: request.url,
+        format: request.format,
+        outputDir: downloadsDir,
+      });
+    } catch (error) {
+      updateJob(job.id, {
+        status: "failed",
+        error: error.message,
+      });
+      return;
+    }
 
     mkdirSync(plan.cwd || downloadsDir, { recursive: true });
     updateJob(job.id, {

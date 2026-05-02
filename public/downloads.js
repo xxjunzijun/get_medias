@@ -107,7 +107,7 @@ function renderTaskCard(group) {
           <button class="danger-button" type="button" data-delete-path="${escapeAttr(group.path)}" data-delete-name="${escapeAttr(group.title)}">删除相册</button>
         </div>
         <details class="album-details">
-          <summary>查看相册内容</summary>
+          <summary>查看 ${group.files.length} 个文件</summary>
           <div class="album-grid">${group.files.map(renderAlbumItem).join("")}</div>
         </details>
       </div>
@@ -133,7 +133,6 @@ function renderAlbumCover(group) {
   if (file.mediaType === "audio") {
     return `<div class="cover-placeholder">AUDIO</div><audio controls src="${file.mediaUrl}"></audio>`;
   }
-  return `<a class="cover-placeholder" href="${file.mediaUrl}" target="_blank" rel="noreferrer">FILE</a>`;
   return `<a class="cover-placeholder" href="${file.mediaUrl}" target="_blank" rel="noreferrer">FILE</a>`;
 }
 

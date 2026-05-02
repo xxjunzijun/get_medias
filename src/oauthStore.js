@@ -1,13 +1,16 @@
 import crypto from "node:crypto";
 import { spawn } from "node:child_process";
+import { execFile } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { promisify } from "node:util";
 
 const PIXIV_CLIENT_ID = "MOBrBDS8blbauoSck0ZfDbtuzpyT";
 const PIXIV_CLIENT_SECRET = "lsACyCD94FhDUtGTXi3QzcFE2uU1hqtDaKeqrdwj";
 const PIXIV_REDIRECT_URI = "https://app-api.pixiv.net/web/v1/users/auth/pixiv/callback";
 const PIXIV_USER_AGENT = "PixivAndroidApp/5.0.234 (Android 11; Pixel 5)";
+const execFileAsync = promisify(execFile);
 
 const sessions = new Map();
 
@@ -50,7 +53,15 @@ export async function submitPixivOauthCode(id, input) {
     await writePixivRefreshToken(token);
     updateSession(session, { status: "completed" });
   } catch (error) {
-    updateSession(session, { status: "failed", error: error.message });
+    const message = formatErrorMessage(error);
+    console.error("[pixiv-oauth] submit failed", {
+      sessionId: id,
+      message,
+      stack: error.stack,
+      cause: serializeCause(error.cause),
+      proxy: proxyEnvSummary(),
+    });
+    updateSession(session, { status: "failed", error: message });
   }
 
   return serializeSession(session);
@@ -92,18 +103,10 @@ async function exchangePixivCode(code, codeVerifier) {
     redirect_uri: PIXIV_REDIRECT_URI,
   });
 
-  const response = await fetch("https://oauth.secure.pixiv.net/auth/token", {
-    method: "POST",
-    headers: {
-      "content-type": "application/x-www-form-urlencoded",
-      "user-agent": PIXIV_USER_AGENT,
-    },
-    body,
-  });
-  const data = await response.json().catch(() => ({}));
+  const data = await postPixivToken(body);
 
-  if (!response.ok || data.error) {
-    const reason = data.error_description || data.error || `HTTP ${response.status}`;
+  if (data.error) {
+    const reason = data.error_description || data.error;
     throw new Error(`Pixiv 授权失败：${reason}。请确认 callback URL 来自当前这次“开始授权”生成的链接；如果中途重新点过“开始授权”，旧 code 会和新会话不匹配。`);
   }
 
@@ -112,6 +115,74 @@ async function exchangePixivCode(code, codeVerifier) {
   }
 
   return data.refresh_token;
+}
+
+async function postPixivToken(body) {
+  const url = "https://oauth.secure.pixiv.net/auth/token";
+
+  try {
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "content-type": "application/x-www-form-urlencoded",
+        "user-agent": PIXIV_USER_AGENT,
+      },
+      body,
+      signal: AbortSignal.timeout(20000),
+    });
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      const reason = data.error_description || data.error || `HTTP ${response.status}`;
+      throw new Error(`Pixiv token endpoint failed: ${reason}`);
+    }
+
+    return data;
+  } catch (error) {
+    console.error("[pixiv-oauth] fetch token request failed, trying curl fallback", {
+      message: error.message,
+      cause: serializeCause(error.cause),
+      proxy: proxyEnvSummary(),
+    });
+    return postPixivTokenWithCurl(url, body);
+  }
+}
+
+async function postPixivTokenWithCurl(url, body) {
+  try {
+    const { stdout } = await execFileAsync("curl", [
+      "--fail-with-body",
+      "--silent",
+      "--show-error",
+      "--max-time",
+      "20",
+      "--request",
+      "POST",
+      "--header",
+      "content-type: application/x-www-form-urlencoded",
+      "--header",
+      `user-agent: ${PIXIV_USER_AGENT}`,
+      "--data",
+      body.toString(),
+      url,
+    ], {
+      maxBuffer: 1024 * 1024,
+      env: process.env,
+    });
+
+    return JSON.parse(stdout);
+  } catch (error) {
+    const stderr = error.stderr?.toString().trim();
+    const stdout = error.stdout?.toString().trim();
+    error.message = [
+      "Pixiv token 请求失败。",
+      stderr || stdout || error.message,
+      proxyEnvSummary().hasProxy
+        ? "检测到代理环境变量；如果仍失败，请确认 systemd 服务继承了 HTTPS_PROXY/HTTP_PROXY。"
+        : "当前 Node 进程未检测到 HTTPS_PROXY/HTTP_PROXY；Linux 服务器无法直连 Pixiv 时需要给服务配置代理。",
+    ].join(" ");
+    throw error;
+  }
 }
 
 async function writePixivRefreshToken(token) {
@@ -166,6 +237,33 @@ function galleryDlConfigPath() {
 
 function base64Url(buffer) {
   return buffer.toString("base64").replaceAll("+", "-").replaceAll("/", "_").replaceAll("=", "");
+}
+
+function formatErrorMessage(error) {
+  const parts = [error.message];
+  const cause = serializeCause(error.cause);
+  if (cause) parts.push(`cause: ${cause}`);
+  return parts.join(" ");
+}
+
+function serializeCause(cause) {
+  if (!cause) return "";
+  return [
+    cause.code,
+    cause.errno,
+    cause.syscall,
+    cause.hostname,
+    cause.address,
+    cause.port,
+    cause.message,
+  ].filter(Boolean).join(" ");
+}
+
+function proxyEnvSummary() {
+  return {
+    hasProxy: Boolean(process.env.HTTPS_PROXY || process.env.https_proxy || process.env.HTTP_PROXY || process.env.http_proxy),
+    hasNoProxy: Boolean(process.env.NO_PROXY || process.env.no_proxy),
+  };
 }
 
 function updateSession(session, patch) {

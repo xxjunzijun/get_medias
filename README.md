@@ -75,6 +75,30 @@ Linux 服务器没有桌面环境时，Pixiv 授权里的「用系统浏览器�
 ~/.config/gallery-dl/config.json
 ```
 
+如果提交 Pixiv code 时出现 `fetch failed`，通常是服务器无法连接 Pixiv 的 OAuth 接口，或 systemd 服务没有继承代理环境变量。可以先在服务器上测试：
+
+```bash
+curl -I https://oauth.secure.pixiv.net/auth/token
+```
+
+如果服务器需要代理，systemd 服务文件里要显式加入环境变量，例如：
+
+```ini
+Environment=HTTPS_PROXY=http://127.0.0.1:7890
+Environment=HTTP_PROXY=http://127.0.0.1:7890
+Environment=NO_PROXY=localhost,127.0.0.1
+```
+
+修改后重载并重启：
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl restart get-medias
+journalctl -u get-medias -f
+```
+
+服务日志会打印 Pixiv OAuth 失败原因，包括 `fetch` 的底层 `cause` 和是否检测到代理环境变量。
+
 生产化部署前建议补上登录鉴权、任务持久化、下载文件清理、限流，以及 systemd 或 Docker 部署配置。
 
 ## 下载依赖

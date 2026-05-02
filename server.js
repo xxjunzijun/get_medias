@@ -1,5 +1,5 @@
 import http from "node:http";
-import { readdir, rm, stat } from "node:fs/promises";
+import { readFile, readdir, rm, stat } from "node:fs/promises";
 import { createReadStream, existsSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -12,6 +12,7 @@ import { startDownload } from "./src/runner.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "public");
 const downloadsDir = path.join(__dirname, "downloads");
+const metadataFilename = ".get-medias.json";
 const port = Number(process.env.PORT || 3000);
 
 const mimeTypes = new Map([
@@ -108,6 +109,7 @@ async function buildDownloadTree(dir = downloadsDir, relativePath = "") {
           name: entry.name,
           path: entryRelativePath,
           updatedAt: info.mtime.toISOString(),
+          metadata: await readDownloadMetadata(entryPath),
           children: await buildDownloadTree(entryPath, entryRelativePath),
         };
       }
@@ -127,6 +129,14 @@ async function buildDownloadTree(dir = downloadsDir, relativePath = "") {
     if (a.type !== b.type) return a.type === "directory" ? -1 : 1;
     return a.name.localeCompare(b.name, "zh-Hans-CN", { numeric: true });
   });
+}
+
+async function readDownloadMetadata(dir) {
+  try {
+    return JSON.parse(await readFile(path.join(dir, metadataFilename), "utf8"));
+  } catch {
+    return null;
+  }
 }
 
 function mediaKind(filename) {

@@ -1,10 +1,11 @@
 import { spawn } from "node:child_process";
-import { mkdirSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { appendJobOutput, getJob, updateJob } from "./jobStore.js";
 
 const downloadsDir = path.resolve("downloads");
+const metadataFilename = ".get-medias.json";
 
 export function startDownload(job, provider, request) {
   queueMicrotask(async () => {
@@ -25,6 +26,7 @@ export function startDownload(job, provider, request) {
     }
 
     mkdirSync(plan.cwd || downloadsDir, { recursive: true });
+    writeTaskMetadata(plan, job, provider, request);
     updateJob(job.id, {
       status: "running",
       command: `${plan.command} ${plan.args.map(quoteArg).join(" ")}`,
@@ -59,6 +61,24 @@ export function startDownload(job, provider, request) {
       }
     });
   });
+}
+
+function writeTaskMetadata(plan, job, provider, request) {
+  const metadataPath = path.join(plan.cwd || downloadsDir, metadataFilename);
+  const metadata = {
+    jobId: job.id,
+    provider: {
+      id: provider.id,
+      name: provider.name,
+    },
+    sourceUrl: request.url,
+    format: request.format || "",
+    title: plan.metadata?.title || "",
+    sourceId: plan.metadata?.sourceId || "",
+    createdAt: job.createdAt,
+  };
+
+  writeFileSync(metadataPath, `${JSON.stringify(metadata, null, 2)}\n`);
 }
 
 function quoteArg(arg) {

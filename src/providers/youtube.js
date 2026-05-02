@@ -1,6 +1,10 @@
+import { execFile } from "node:child_process";
 import path from "node:path";
+import { promisify } from "node:util";
 
 import { safeSegment } from "../pathUtils.js";
+
+const execFileAsync = promisify(execFile);
 
 export const youtubeProvider = {
   id: "youtube",
@@ -26,11 +30,15 @@ export const youtubeProvider = {
     };
   },
 
-  createDownloadPlan({ jobId, url, format, outputDir }) {
+  async createDownloadPlan({ jobId, url, format, outputDir }) {
     const siteDir = path.join(outputDir, "youtube");
-    const fallbackDir = safeSegment(jobId, "youtube-task");
-    const taskTemplate = `%(title|${fallbackDir}).180B [%(id)s]`;
-    const outputTemplate = path.join(siteDir, taskTemplate, "%(title).180B [%(id)s].%(ext)s");
+    const metadata = await readYtDlpMetadata(url).catch(() => null);
+    const shortJobId = jobId.split("-")[0];
+    const taskTitle = metadata?.title && metadata?.id
+      ? `${metadata.title} [${metadata.id}]`
+      : metadata?.title || metadata?.id || "youtube-task";
+    const taskDir = path.join(siteDir, safeSegment(`${taskTitle} ${shortJobId}`, `youtube-task ${shortJobId}`));
+    const outputTemplate = path.join(taskDir, "%(title).180B [%(id)s].%(ext)s");
     const args = [
       "--newline",
       "--no-playlist",
@@ -48,8 +56,24 @@ export const youtubeProvider = {
     return {
       command: "yt-dlp",
       args,
-      cwd: siteDir,
-      expectedOutput: path.join(siteDir, taskTemplate),
+      cwd: taskDir,
+      expectedOutput: taskDir,
+      metadata: {
+        title: metadata?.title || "",
+        sourceId: metadata?.id || "",
+      },
     };
   },
 };
+
+async function readYtDlpMetadata(url) {
+  const { stdout } = await execFileAsync("yt-dlp", [
+    "--dump-single-json",
+    "--no-playlist",
+    "--skip-download",
+    url,
+  ], {
+    maxBuffer: 10 * 1024 * 1024,
+  });
+  return JSON.parse(stdout);
+}

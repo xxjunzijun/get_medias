@@ -465,6 +465,21 @@ code {
   color: var(--muted);
 }
 
+.source-link {
+  display: inline-block;
+  max-width: min(720px, 100%);
+  margin-top: 10px;
+  color: var(--accent-strong);
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.source-link:hover {
+  text-decoration: underline;
+}
+
 .media-section {
   display: grid;
   gap: 12px;

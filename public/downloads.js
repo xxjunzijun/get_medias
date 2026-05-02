@@ -55,10 +55,17 @@ function buildTaskGroups(siteDirs) {
 
     const taskDirs = site.children.filter((item) => item.type === "directory");
     const looseFiles = site.children.filter((item) => item.type === "file");
-    const tasks = taskDirs.map((task) => createTaskGroup(site.name, task.name, task.path, task.children || [], task.updatedAt));
+    const tasks = taskDirs.map((task) => createTaskGroup(
+      site.name,
+      task.name,
+      task.path,
+      task.children || [],
+      task.updatedAt,
+      task.metadata,
+    ));
 
     if (looseFiles.length) {
-      tasks.unshift(createTaskGroup(site.name, site.name, site.path, looseFiles, site.updatedAt));
+      tasks.unshift(createTaskGroup(site.name, site.name, site.path, looseFiles, site.updatedAt, site.metadata));
     }
 
     return tasks;
@@ -68,7 +75,7 @@ function buildTaskGroups(siteDirs) {
   });
 }
 
-function createTaskGroup(site, title, groupPath, items, updatedAt) {
+function createTaskGroup(site, title, groupPath, items, updatedAt, metadata = null) {
   const files = flattenFiles(items);
   const cover = files.find((file) => file.mediaType === "image") || files.find((file) => file.mediaType === "video") || files[0];
 
@@ -78,6 +85,7 @@ function createTaskGroup(site, title, groupPath, items, updatedAt) {
     path: groupPath,
     files,
     cover,
+    metadata,
     updatedAt: latestTime(files) || updatedAt,
     size: files.reduce((sum, file) => sum + (file.size || 0), 0),
   };
@@ -154,6 +162,7 @@ function renderSelectedGroup() {
           <span class="site-pill">${escapeHtml(siteLabels[group.site] || group.site)}</span>
           <h2>${escapeHtml(group.title)}</h2>
           <p>${group.files.length} 个文件 · ${formatBytes(group.size)} · ${new Date(group.updatedAt).toLocaleString()}</p>
+          ${group.metadata?.sourceUrl ? `<a class="source-link" href="${escapeAttr(group.metadata.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(group.metadata.sourceUrl)}</a>` : ""}
         </div>
         <button class="danger-button" type="button" data-delete-path="${escapeAttr(group.path)}" data-delete-name="${escapeAttr(group.title)}">删除任务</button>
       </header>

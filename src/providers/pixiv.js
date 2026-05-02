@@ -61,6 +61,10 @@ export const pixivProvider = {
       ],
       cwd: taskDir,
       expectedOutput: taskDir,
+      metadata: {
+        title: metadata?.title || "",
+        sourceId: metadata?.id ? String(metadata.id) : "",
+      },
     };
   },
 };

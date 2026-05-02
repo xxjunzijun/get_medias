@@ -1,9 +1,11 @@
+import { randomUUID } from "node:crypto";
+
 const jobs = new Map();
 
 export function createJob(provider, request) {
   const now = new Date().toISOString();
   const job = {
-    id: crypto.randomUUID(),
+    id: randomUUID(),
     provider,
     request,
     status: "queued",

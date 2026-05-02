@@ -137,6 +137,16 @@ function renderOauthSession(session) {
   form.hidden = !session.loginUrl || ["completed", "failed"].includes(session.status);
   form.dataset.sessionId = session.id;
 
+  if (session.status === "completed") {
+    state.innerHTML = `
+      <div class="oauth-status oauth-completed">
+        <strong>授权完成</strong>
+        <p>Pixiv 登录态已保存到 <code>${escapeHtml(session.configPath || "gallery-dl config")}</code>，现在可以直接开始下载。</p>
+      </div>
+    `;
+    return;
+  }
+
   const loginLink = session.loginUrl
     ? `<span class="oauth-actions"><a href="${session.loginUrl}" target="_blank" rel="noreferrer">在当前浏览器打开</a><button id="openPixivSystemBrowser" type="button" class="ghost-button" data-session-id="${session.id}">用系统浏览器打开</button><button id="copyPixivOauthUrl" type="button" class="ghost-button" data-login-url="${session.loginUrl}">复制授权链接</button></span>`
     : "正在等待 gallery-dl 生成登录链接...";
@@ -213,7 +223,7 @@ async function startDownload(event) {
     await loadJobs();
     startPolling();
   } catch (error) {
-    renderError(error.message);
+    alert(`下载任务创建失败：${error.message}`);
   } finally {
     button.disabled = false;
     button.textContent = "开始下载";

@@ -42,9 +42,10 @@ export function startDownload(job, provider, request) {
       if (code === 0) {
         updateJob(job.id, { status: "completed" });
       } else {
+        const outputTail = latestJob?.output ? `\n\n${latestJob.output.slice(-2000)}` : "";
         updateJob(job.id, {
           status: "failed",
-          error: `${plan.command} exited with code ${code}.`,
+          error: `${plan.command} exited with code ${code}.${outputTail}`,
         });
       }
     });

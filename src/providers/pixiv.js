@@ -1,5 +1,6 @@
 import path from "node:path";
 
+import { galleryDlConfigPath } from "../oauthStore.js";
 import { safeSegment } from "../pathUtils.js";
 
 export const pixivProvider = {
@@ -37,6 +38,8 @@ export const pixivProvider = {
     return {
       command: "gallery-dl",
       args: [
+        "--config",
+        galleryDlConfigPath(),
         "--destination",
         siteDir,
         "--directory",

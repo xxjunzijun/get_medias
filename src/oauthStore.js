@@ -230,7 +230,7 @@ function extractCode(input) {
   return value;
 }
 
-function galleryDlConfigPath() {
+export function galleryDlConfigPath() {
   const xdgConfigHome = process.env.XDG_CONFIG_HOME || path.join(os.homedir(), ".config");
   return path.join(xdgConfigHome, "gallery-dl", "config.json");
 }

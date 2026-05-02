@@ -1,3 +1,4 @@
+const downloadsNav = document.querySelector("#downloadsNav");
 const downloadsList = document.querySelector("#downloadsList");
 const refreshDownloads = document.querySelector("#refreshDownloads");
 const librarySummary = document.querySelector("#librarySummary");
@@ -8,12 +9,21 @@ const closeLightbox = document.querySelector("#closeLightbox");
 const prevLightbox = document.querySelector("#prevLightbox");
 const nextLightbox = document.querySelector("#nextLightbox");
 
+const siteOrder = ["bilibili", "youtube", "pixiv"];
+const siteLabels = {
+  bilibili: "Bilibili 视频",
+  youtube: "YouTube 视频",
+  pixiv: "Pixiv 图片",
+};
+
 let currentGroups = [];
+let selectedGroupPath = "";
 let currentImages = [];
 let currentImageIndex = 0;
 
 refreshDownloads.addEventListener("click", loadDownloads);
-downloadsList.addEventListener("click", handleLibraryClick);
+downloadsNav.addEventListener("click", handleNavClick);
+downloadsList.addEventListener("click", handleContentClick);
 closeLightbox.addEventListener("click", hideLightbox);
 prevLightbox.addEventListener("click", () => moveLightbox(-1));
 nextLightbox.addEventListener("click", () => moveLightbox(1));
@@ -28,11 +38,15 @@ document.addEventListener("keydown", (event) => {
 });
 
 async function loadDownloads() {
-  downloadsList.innerHTML = `<p class="muted empty-list">正在读取...</p>`;
+  downloadsNav.innerHTML = `<p class="muted empty-list">正在读取...</p>`;
+  downloadsList.innerHTML = renderEmptyState("正在读取 downloads 目录");
+
   const data = await fetch("/api/downloads").then((response) => response.json());
-  const groups = buildTaskGroups(data.items || []);
-  currentGroups = groups;
-  renderDownloads(groups);
+  currentGroups = buildTaskGroups(data.items || []);
+  if (!currentGroups.some((group) => group.path === selectedGroupPath)) {
+    selectedGroupPath = currentGroups[0]?.path || "";
+  }
+  renderLibrary();
 }
 
 function buildTaskGroups(siteDirs) {
@@ -48,7 +62,10 @@ function buildTaskGroups(siteDirs) {
     }
 
     return tasks;
-  }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }).sort((a, b) => {
+    const siteDelta = siteOrder.indexOf(a.site) - siteOrder.indexOf(b.site);
+    return siteDelta || new Date(b.updatedAt) - new Date(a.updatedAt);
+  });
 }
 
 function createTaskGroup(site, title, groupPath, items, updatedAt) {
@@ -78,89 +95,146 @@ function latestTime(files) {
   return files.map((file) => file.updatedAt).sort().at(-1);
 }
 
-function renderDownloads(groups) {
-  const fileCount = groups.reduce((sum, group) => sum + group.files.length, 0);
-  librarySummary.textContent = groups.length
-    ? `${groups.length} 个任务，${fileCount} 个文件`
+function renderLibrary() {
+  const fileCount = currentGroups.reduce((sum, group) => sum + group.files.length, 0);
+  librarySummary.textContent = currentGroups.length
+    ? `${currentGroups.length} 个任务，${fileCount} 个文件`
     : "暂无已下载内容";
 
-  if (!groups.length) {
-    downloadsList.innerHTML = `<p class="muted empty-list">暂无已下载内容</p>`;
+  renderSidebar();
+  renderSelectedGroup();
+}
+
+function renderSidebar() {
+  const groupsBySite = Object.groupBy
+    ? Object.groupBy(currentGroups, (group) => group.site)
+    : groupBySite(currentGroups);
+
+  downloadsNav.innerHTML = siteOrder.map((site) => {
+    const groups = groupsBySite[site] || [];
+    return `
+      <section class="nav-section">
+        <div class="nav-section-title">
+          <span>${escapeHtml(siteLabels[site])}</span>
+          <small>${groups.length}</small>
+        </div>
+        <div class="nav-task-list">
+          ${groups.length ? groups.map(renderNavTask).join("") : `<p class="muted nav-empty">暂无任务</p>`}
+        </div>
+      </section>
+    `;
+  }).join("");
+}
+
+function renderNavTask(group) {
+  return `
+    <button class="nav-task ${group.path === selectedGroupPath ? "is-active" : ""}" type="button" data-select-path="${escapeAttr(group.path)}">
+      <span>${escapeHtml(group.title)}</span>
+      <small>${group.files.length} 个文件 · ${formatBytes(group.size)}</small>
+    </button>
+  `;
+}
+
+function renderSelectedGroup() {
+  const group = currentGroups.find((item) => item.path === selectedGroupPath);
+  if (!group) {
+    downloadsList.innerHTML = renderEmptyState("左侧选择一个下载任务");
     return;
   }
 
-  downloadsList.innerHTML = groups.map(renderTaskCard).join("");
-}
+  const images = group.files.filter((file) => file.mediaType === "image");
+  const videos = group.files.filter((file) => file.mediaType === "video");
+  const audios = group.files.filter((file) => file.mediaType === "audio");
+  const others = group.files.filter((file) => !["image", "video", "audio"].includes(file.mediaType));
 
-function renderTaskCard(group) {
-  return `
-    <article class="album-card">
-      <div class="album-cover">${renderAlbumCover(group)}</div>
-      <div class="album-body">
-        <div class="album-heading">
-          <span class="site-pill">${escapeHtml(siteLabel(group.site))}</span>
+  downloadsList.innerHTML = `
+    <article class="media-detail">
+      <header class="media-detail-header">
+        <div>
+          <span class="site-pill">${escapeHtml(siteLabels[group.site] || group.site)}</span>
           <h2>${escapeHtml(group.title)}</h2>
           <p>${group.files.length} 个文件 · ${formatBytes(group.size)} · ${new Date(group.updatedAt).toLocaleString()}</p>
         </div>
-        <div class="album-actions">
-          <a class="nav-link" href="${group.cover?.mediaUrl || "#"}" target="_blank" rel="noreferrer">打开封面</a>
-          <button class="danger-button" type="button" data-delete-path="${escapeAttr(group.path)}" data-delete-name="${escapeAttr(group.title)}">删除相册</button>
-        </div>
-        <details class="album-details">
-          <summary>查看 ${group.files.length} 个文件</summary>
-          <div class="album-grid">${group.files.map(renderAlbumItem).join("")}</div>
-        </details>
-      </div>
+        <button class="danger-button" type="button" data-delete-path="${escapeAttr(group.path)}" data-delete-name="${escapeAttr(group.title)}">删除任务</button>
+      </header>
+
+      ${images.length ? renderImageGrid(images) : ""}
+      ${videos.length ? renderMediaList("视频", videos) : ""}
+      ${audios.length ? renderMediaList("音频", audios) : ""}
+      ${others.length ? renderMediaList("文件", others) : ""}
     </article>
   `;
 }
 
-function renderAlbumCover(group) {
-  const images = group.files.filter((file) => file.mediaType === "image").slice(0, 4);
-  if (images.length) {
-    return images.map((file) => `
-      <a href="${file.mediaUrl}" data-view-image="${escapeAttr(file.path)}">
-        <img src="${file.mediaUrl}" alt="">
-      </a>
-    `).join("");
-  }
-
-  const file = group.cover;
-  if (!file) return `<div class="cover-placeholder">EMPTY</div>`;
-  if (file.mediaType === "video") {
-    return `<video controls src="${file.mediaUrl}"></video>`;
-  }
-  if (file.mediaType === "audio") {
-    return `<div class="cover-placeholder">AUDIO</div><audio controls src="${file.mediaUrl}"></audio>`;
-  }
-  return `<a class="cover-placeholder" href="${file.mediaUrl}" target="_blank" rel="noreferrer">FILE</a>`;
+function renderImageGrid(images) {
+  return `
+    <section class="media-section">
+      <div class="media-section-title">
+        <h3>图片</h3>
+        <span>${images.length}</span>
+      </div>
+      <div class="masonry-grid">
+        ${images.map(renderImageTile).join("")}
+      </div>
+    </section>
+  `;
 }
 
-function renderAlbumItem(file) {
-  const previewLink = file.mediaType === "image"
-    ? `<a href="${file.mediaUrl}" data-view-image="${escapeAttr(file.path)}">${renderAlbumPreview(file)}</a>`
-    : `<a href="${file.mediaUrl}" target="_blank" rel="noreferrer">${renderAlbumPreview(file)}</a>`;
-
+function renderImageTile(file) {
   return `
-    <figure class="album-item">
-      ${previewLink}
+    <figure class="image-tile">
+      <button type="button" data-view-image="${escapeAttr(file.path)}">
+        <img src="${file.mediaUrl}" alt="">
+      </button>
       <figcaption>
         <span>${escapeHtml(file.name)}</span>
-        <small>${formatBytes(file.size)}</small>
         <button class="danger-link" type="button" data-delete-path="${escapeAttr(file.path)}" data-delete-name="${escapeAttr(file.name)}">删除</button>
       </figcaption>
     </figure>
   `;
 }
 
-function renderAlbumPreview(file) {
-  if (file.mediaType === "image") return `<img src="${file.mediaUrl}" alt="">`;
-  if (file.mediaType === "video") return `<video src="${file.mediaUrl}" muted></video>`;
-  if (file.mediaType === "audio") return `<div class="album-placeholder">AUDIO</div>`;
-  return `<div class="album-placeholder">FILE</div>`;
+function renderMediaList(title, files) {
+  return `
+    <section class="media-section">
+      <div class="media-section-title">
+        <h3>${title}</h3>
+        <span>${files.length}</span>
+      </div>
+      <div class="media-list">
+        ${files.map(renderMediaRow).join("")}
+      </div>
+    </section>
+  `;
 }
 
-async function handleLibraryClick(event) {
+function renderMediaRow(file) {
+  const preview = file.mediaType === "video"
+    ? `<video controls src="${file.mediaUrl}"></video>`
+    : file.mediaType === "audio"
+      ? `<audio controls src="${file.mediaUrl}"></audio>`
+      : `<a href="${file.mediaUrl}" target="_blank" rel="noreferrer">打开文件</a>`;
+
+  return `
+    <article class="media-row">
+      <div>${preview}</div>
+      <div>
+        <strong>${escapeHtml(file.name)}</strong>
+        <small>${formatBytes(file.size)}</small>
+        <button class="danger-link" type="button" data-delete-path="${escapeAttr(file.path)}" data-delete-name="${escapeAttr(file.name)}">删除</button>
+      </div>
+    </article>
+  `;
+}
+
+async function handleNavClick(event) {
+  const task = event.target.closest("[data-select-path]");
+  if (!task) return;
+  selectedGroupPath = task.dataset.selectPath;
+  renderLibrary();
+}
+
+async function handleContentClick(event) {
   const imageLink = event.target.closest("[data-view-image]");
   if (imageLink) {
     event.preventDefault();
@@ -188,7 +262,7 @@ async function handleLibraryClick(event) {
     const data = await response.json().catch(() => ({}));
     alert(data.error || "删除失败");
     button.disabled = false;
-    button.textContent = button.classList.contains("danger-button") ? "删除相册" : "删除";
+    button.textContent = button.classList.contains("danger-button") ? "删除任务" : "删除";
     return;
   }
 
@@ -196,7 +270,8 @@ async function handleLibraryClick(event) {
 }
 
 function showLightbox(path) {
-  currentImages = currentGroups.flatMap((group) => group.files.filter((file) => file.mediaType === "image"));
+  const group = currentGroups.find((item) => item.path === selectedGroupPath);
+  currentImages = (group?.files || []).filter((file) => file.mediaType === "image");
   currentImageIndex = Math.max(0, currentImages.findIndex((file) => file.path === path));
   renderLightbox();
   lightbox.hidden = false;
@@ -221,12 +296,16 @@ function hideLightbox() {
   lightboxImage.removeAttribute("src");
 }
 
-function siteLabel(site) {
-  return {
-    bilibili: "Bilibili",
-    youtube: "YouTube",
-    pixiv: "Pixiv",
-  }[site] || site;
+function groupBySite(groups) {
+  return groups.reduce((result, group) => {
+    result[group.site] ||= [];
+    result[group.site].push(group);
+    return result;
+  }, {});
+}
+
+function renderEmptyState(text) {
+  return `<div class="empty-panel"><p class="muted">${escapeHtml(text)}</p></div>`;
 }
 
 function formatBytes(bytes) {

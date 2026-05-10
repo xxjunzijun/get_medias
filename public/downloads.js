@@ -71,7 +71,7 @@ function buildTaskGroups(siteDirs) {
     return tasks;
   }).sort((a, b) => {
     const siteDelta = siteOrder.indexOf(a.site) - siteOrder.indexOf(b.site);
-    return siteDelta || new Date(b.updatedAt) - new Date(a.updatedAt);
+    return siteDelta || compareNewestFirst(a.updatedAt, b.updatedAt);
   });
 }
 
@@ -96,11 +96,15 @@ function flattenFiles(items) {
     if (item.type === "file") return [item];
     if (item.type === "directory") return flattenFiles(item.children || []);
     return [];
-  });
+  }).sort((a, b) => compareNewestFirst(a.updatedAt, b.updatedAt));
 }
 
 function latestTime(files) {
   return files.map((file) => file.updatedAt).sort().at(-1);
+}
+
+function compareNewestFirst(left, right) {
+  return new Date(right || 0) - new Date(left || 0);
 }
 
 function renderLibrary() {

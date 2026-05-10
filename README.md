@@ -114,6 +114,26 @@ sudo -u xiaowu /home/xiaowu/.local/bin/gallery-dl --version
 sudo -u xiaowu /home/xiaowu/.local/bin/yt-dlp --version
 ```
 
+YouTube 如果报 `Sign in to confirm you’re not a bot`，需要给 yt-dlp 配置 YouTube cookies。把浏览器里已登录 YouTube 的 cookies 导出成 Netscape 格式文件，例如：
+
+```text
+/DATA/disk2t/get_media/youtube-cookies.txt
+```
+
+然后在 systemd 里加入：
+
+```ini
+Environment=YOUTUBE_COOKIES_FILE=/DATA/disk2t/get_media/youtube-cookies.txt
+```
+
+YouTube 如果提示没有 JavaScript runtime，可以安装 Deno 或直接使用系统 Node：
+
+```ini
+Environment=YT_DLP_JS_RUNTIME=node:/usr/bin/node
+```
+
+如果 `node` 不在 `/usr/bin/node`，用 `which node` 的结果替换。
+
 生产化部署前建议补上登录鉴权、任务持久化、下载文件清理、限流，以及 systemd 或 Docker 部署配置。
 
 ## 下载依赖

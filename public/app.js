@@ -208,16 +208,31 @@ function renderOauthError(message) {
 
 async function startDownload(event) {
   event.preventDefault();
-  if (!currentProvider) return;
 
-  const format = new FormData(event.currentTarget).get("format");
+  const requestedUrl = urlInput.value.trim();
+  if (!requestedUrl) return;
+
+  const selectedFormat = new FormData(event.currentTarget).get("format");
   const button = event.currentTarget.querySelector("button");
   button.disabled = true;
-  button.textContent = "已加入任务";
 
   try {
+    let provider = currentProvider;
+    if (!provider || provider.url !== requestedUrl) {
+      button.textContent = "解析中";
+      const data = await requestJson("/api/resolve", { url: requestedUrl });
+      provider = data.provider;
+      currentProvider = provider;
+      renderProvider(provider);
+    }
+
+    const format = provider.formats.some((item) => item.id === selectedFormat)
+      ? selectedFormat
+      : provider.defaultFormat;
+
+    button.textContent = "已加入任务";
     await requestJson("/api/download", {
-      url: currentProvider.url,
+      url: requestedUrl,
       format,
     });
     await loadJobs();
@@ -225,8 +240,11 @@ async function startDownload(event) {
   } catch (error) {
     alert(`下载任务创建失败：${error.message}`);
   } finally {
-    button.disabled = false;
-    button.textContent = "开始下载";
+    const latestButton = document.querySelector("#downloadForm button");
+    if (latestButton) {
+      latestButton.disabled = false;
+      latestButton.textContent = "开始下载";
+    }
   }
 }
 

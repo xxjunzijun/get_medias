@@ -3,7 +3,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 import { safeSegment } from "../pathUtils.js";
-import { ytDlpBin } from "../toolBins.js";
+import { youtubeCookiesFile, ytDlpBin, ytDlpJsRuntime } from "../toolBins.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -43,6 +43,7 @@ export const youtubeProvider = {
     const args = [
       "--newline",
       "--no-playlist",
+      ...youtubeAuthArgs(),
       "-o",
       outputTemplate,
     ];
@@ -71,10 +72,27 @@ async function readYtDlpMetadata(url) {
   const { stdout } = await execFileAsync(ytDlpBin(), [
     "--dump-single-json",
     "--no-playlist",
+    ...youtubeAuthArgs(),
     "--skip-download",
     url,
   ], {
     maxBuffer: 10 * 1024 * 1024,
   });
   return JSON.parse(stdout);
+}
+
+function youtubeAuthArgs() {
+  const args = [];
+  const cookiesFile = youtubeCookiesFile();
+  const jsRuntime = ytDlpJsRuntime();
+
+  if (cookiesFile) {
+    args.push("--cookies", cookiesFile);
+  }
+
+  if (jsRuntime) {
+    args.push("--js-runtimes", jsRuntime);
+  }
+
+  return args;
 }

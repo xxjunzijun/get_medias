@@ -9,26 +9,62 @@
   <body>
     <main class="app-shell">
       <section class="workspace library-workspace">
-        <div class="masthead library-masthead">
-          <div class="top-nav">
-            <p class="eyebrow">Media Library</p>
-            <a class="nav-link" href="/">返回下载器</a>
+        <header class="site-header">
+          <a class="brand" href="/" aria-label="暖屿下载器首页">
+            <span class="brand-mark">M</span>
+            <span>
+              <strong>暖屿</strong>
+              <small>Media Harvester</small>
+            </span>
+          </a>
+          <nav class="top-nav" aria-label="主导航">
+            <a class="nav-link" href="/">下载器</a>
+            <a class="nav-link is-active" href="/downloads.html">媒体库</a>
+          </nav>
+        </header>
+
+        <section class="library-hero">
+          <div>
+            <p class="eyebrow"><span class="eyebrow-dot"></span> Local collection</p>
+            <h1>我的媒体库</h1>
+            <p class="hero-description">浏览已经保存在本机的图片、视频和音频。</p>
           </div>
-          <h1>已下载内容</h1>
-        </div>
+          <div class="library-stat">
+            <span>收藏概览</span>
+            <strong id="librarySummary">正在读取</strong>
+          </div>
+        </section>
 
         <section class="library-toolbar">
-          <div>
-            <p class="muted">按平台和下载任务浏览</p>
-            <h2 id="librarySummary">正在读取 downloads 目录</h2>
+          <label class="search-field">
+            <span aria-hidden="true">⌕</span>
+            <span class="sr-only">搜索媒体任务</span>
+            <input id="librarySearch" type="search" placeholder="搜索标题或文件名">
+          </label>
+          <div class="filter-pills" aria-label="按平台筛选">
+            <button class="filter-pill is-active" type="button" data-site-filter="all">全部</button>
+            <button class="filter-pill" type="button" data-site-filter="bilibili">Bilibili</button>
+            <button class="filter-pill" type="button" data-site-filter="youtube">YouTube</button>
+            <button class="filter-pill" type="button" data-site-filter="pixiv">Pixiv</button>
           </div>
-          <button id="refreshDownloads" type="button" class="ghost-button">刷新</button>
+          <button id="refreshDownloads" type="button" class="icon-button"><span aria-hidden="true">↻</span> 刷新</button>
         </section>
 
         <section class="media-browser">
-          <aside id="downloadsNav" class="media-sidebar"></aside>
+          <aside class="media-sidebar-shell">
+            <div class="sidebar-heading">
+              <span>下载任务</span>
+              <small id="visibleTaskCount">0</small>
+            </div>
+            <div id="downloadsNav" class="media-sidebar"></div>
+          </aside>
           <div id="downloadsList" class="media-content"></div>
         </section>
+
+        <footer class="site-footer">
+          <span>旧下载内容会自动保留并显示</span>
+          <span>暖屿 Media Harvester</span>
+        </footer>
       </section>
     </main>
 
@@ -42,6 +78,7 @@
       <button id="nextLightbox" class="lightbox-nav lightbox-next" type="button">下一张</button>
     </div>
 
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="/downloads.js"></script>
   </body>
 </html>

@@ -9,41 +9,76 @@
   <body>
     <main class="app-shell">
       <section class="workspace">
-        <div class="masthead">
-          <div class="top-nav">
-            <p class="eyebrow">URL Downloader</p>
-            <a class="nav-link" href="/downloads.html">浏览已下载</a>
-          </div>
-          <h1>按网站独立解析和下载</h1>
-        </div>
+        <header class="site-header">
+          <a class="brand" href="/" aria-label="暖屿下载器首页">
+            <span class="brand-mark">M</span>
+            <span>
+              <strong>暖屿</strong>
+              <small>Media Harvester</small>
+            </span>
+          </a>
+          <nav class="top-nav" aria-label="主导航">
+            <a class="nav-link is-active" href="/">下载器</a>
+            <a class="nav-link" href="/downloads.html">媒体库</a>
+          </nav>
+        </header>
 
-        <form id="resolveForm" class="url-bar">
-          <input id="urlInput" name="url" type="url" autocomplete="url" placeholder="粘贴 B 站、YouTube、Pixiv 网址" required>
-          <button type="submit">解析</button>
-        </form>
+        <section class="hero">
+          <div class="download-composer">
+            <form id="resolveForm" class="url-bar">
+              <label class="sr-only" for="urlInput">媒体网址</label>
+              <span class="input-symbol" aria-hidden="true">↗</span>
+              <input id="urlInput" name="url" type="url" autocomplete="url" placeholder="粘贴 Bilibili、YouTube 或 Pixiv 链接" required>
+              <button type="submit"><span>解析链接</span><span aria-hidden="true">→</span></button>
+            </form>
+            <div class="supported-sites" aria-label="支持的平台">
+              <span>支持</span>
+              <span class="platform-chip platform-bilibili"><i></i>Bilibili</span>
+              <span class="platform-chip platform-youtube"><i></i>YouTube</span>
+              <span class="platform-chip platform-pixiv"><i></i>Pixiv</span>
+            </div>
+          </div>
+        </section>
 
         <section id="providerPanel" class="provider-panel is-empty">
-          <div>
-            <p class="muted">等待解析</p>
-            <h2>输入网址后会自动识别站点流程</h2>
+          <div class="empty-illustration" aria-hidden="true">
+            <span>＋</span>
+          </div>
+          <div class="empty-copy">
+            <p class="section-kicker">等待链接</p>
+            <h2>从上方粘贴一个媒体网址</h2>
+            <p class="muted">识别成功后，你可以在这里选择视频、音频或图片格式。</p>
           </div>
         </section>
 
         <section class="jobs-section">
           <div class="section-title">
-            <h2>下载任务</h2>
-            <button id="refreshJobs" type="button" class="ghost-button">刷新</button>
+            <div>
+              <p class="section-kicker">Activity</p>
+              <h2>最近任务</h2>
+            </div>
+            <button id="refreshJobs" type="button" class="icon-button" aria-label="刷新任务"><span aria-hidden="true">↻</span> 刷新</button>
           </div>
           <div id="jobsList" class="jobs-list"></div>
         </section>
 
         <a class="library-link" href="/downloads.html">
-          <span>已下载内容</span>
-          <strong>打开媒体库</strong>
+          <span class="library-icon" aria-hidden="true">▦</span>
+          <span>
+            <small>你的本地收藏</small>
+            <strong>打开媒体库</strong>
+          </span>
+          <span class="library-arrow" aria-hidden="true">→</span>
         </a>
+
+        <footer class="site-footer">
+          <span>文件仅保存在本机</span>
+          <span>暖屿 Media Harvester</span>
+        </footer>
       </section>
     </main>
 
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
     <script type="module" src="/app.js"></script>
   </body>
 </html>

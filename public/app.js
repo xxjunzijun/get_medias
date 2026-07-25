@@ -3,10 +3,12 @@ const urlInput = document.querySelector("#urlInput");
 const providerPanel = document.querySelector("#providerPanel");
 const jobsList = document.querySelector("#jobsList");
 const refreshJobs = document.querySelector("#refreshJobs");
+const toast = document.querySelector("#toast");
 
 let currentProvider = null;
 let pollTimer = null;
 let oauthPollTimer = null;
+let toastTimer = null;
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -16,8 +18,15 @@ form.addEventListener("submit", async (event) => {
 refreshJobs.addEventListener("click", loadJobs);
 
 async function resolveUrl(url) {
-  providerPanel.className = "provider-panel";
-  providerPanel.innerHTML = `<p class="muted">正在解析...</p>`;
+  providerPanel.className = "provider-panel is-empty";
+  providerPanel.innerHTML = `
+    <div class="empty-illustration" aria-hidden="true"><span>…</span></div>
+    <div class="empty-copy">
+      <p class="section-kicker">正在识别</p>
+      <h2>正在解析媒体信息</h2>
+      <p class="muted">通常只需要几秒钟，请稍候。</p>
+    </div>
+  `;
 
   try {
     const data = await requestJson("/api/resolve", { url });
@@ -32,24 +41,25 @@ async function resolveUrl(url) {
 function renderProvider(provider) {
   const formatButtons = provider.formats.map((format) => `
     <label class="format-option">
-      <input type="radio" name="format" value="${format.id}" ${format.id === provider.defaultFormat ? "checked" : ""}>
+      <input type="radio" name="format" value="${escapeAttr(format.id)}" ${format.id === provider.defaultFormat ? "checked" : ""}>
       <span>
-        <strong>${format.label}</strong>
-        <small>${format.detail}</small>
+        <strong>${escapeHtml(format.label)}</strong>
+        <small>${escapeHtml(format.detail)}</small>
       </span>
     </label>
   `).join("");
 
+  providerPanel.className = "provider-panel";
   providerPanel.innerHTML = `
     <div class="provider-copy">
-      <p class="muted">已识别：${provider.name}</p>
-      <h2>${provider.description}</h2>
-      <p class="requirements">依赖：${provider.requirements.map((item) => `<code>${item}</code>`).join(" ")}</p>
+      <p class="muted">已识别 · ${escapeHtml(provider.name)}</p>
+      <h2>${escapeHtml(provider.description)}</h2>
+      <p class="requirements">本机工具：${provider.requirements.map((item) => `<code>${escapeHtml(item)}</code>`).join(" ")}</p>
       ${provider.auth ? renderAuthCard(provider.auth) : ""}
     </div>
     <form id="downloadForm" class="download-form">
       <div class="format-grid">${formatButtons}</div>
-      <button type="submit">开始下载</button>
+      <button type="submit">加入下载队列</button>
     </form>
   `;
 
@@ -235,15 +245,16 @@ async function startDownload(event) {
       url: requestedUrl,
       format,
     });
+    showToast("任务已加入下载队列");
     await loadJobs();
     startPolling();
   } catch (error) {
-    alert(`下载任务创建失败：${error.message}`);
+    showToast(`下载任务创建失败：${error.message}`, true);
   } finally {
     const latestButton = document.querySelector("#downloadForm button");
     if (latestButton) {
       latestButton.disabled = false;
-      latestButton.textContent = "开始下载";
+      latestButton.textContent = "加入下载队列";
     }
   }
 }
@@ -255,7 +266,7 @@ async function loadJobs() {
 
 function renderJobs(jobs) {
   if (!jobs.length) {
-    jobsList.innerHTML = `<p class="muted empty-list">暂无任务</p>`;
+    jobsList.innerHTML = `<p class="muted empty-list">还没有下载任务，从上方粘贴一个链接开始吧。</p>`;
     return;
   }
 
@@ -263,17 +274,23 @@ function renderJobs(jobs) {
     <article class="job-card">
       <div class="job-topline">
         <div>
-          <p class="muted">${job.provider.name}</p>
-          <h3>${job.request.url}</h3>
+          <p class="section-kicker">${escapeHtml(job.provider.name)}</p>
+          <h3>${escapeHtml(job.request.url)}</h3>
         </div>
-        <span class="status status-${job.status}">${statusLabel(job.status)}</span>
+        <span class="status status-${escapeAttr(job.status)}">${escapeHtml(statusLabel(job.status))}</span>
       </div>
+      ${["queued", "running"].includes(job.status) ? `<div class="job-progress" aria-label="${statusLabel(job.status)}"></div>` : ""}
       <dl>
-        <div><dt>格式</dt><dd>${job.request.format}</dd></div>
-        <div><dt>输出目录</dt><dd>${job.expectedOutput || "等待生成"}</dd></div>
+        <div><dt>格式</dt><dd>${escapeHtml(job.request.format)}</dd></div>
+        <div><dt>保存位置</dt><dd>${escapeHtml(job.expectedOutput || "等待生成")}</dd></div>
       </dl>
-      ${job.command ? `<pre class="command">${escapeHtml(job.command)}</pre>` : ""}
-      ${job.output ? `<pre class="output">${escapeHtml(job.output)}</pre>` : ""}
+      ${job.command || job.output ? `
+        <details class="job-log">
+          <summary>查看任务日志</summary>
+          ${job.command ? `<pre class="command">${escapeHtml(job.command)}</pre>` : ""}
+          ${job.output ? `<pre class="output">${escapeHtml(job.output)}</pre>` : ""}
+        </details>
+      ` : ""}
       ${job.error ? `<p class="error-text">${escapeHtml(job.error)}</p>` : ""}
     </article>
   `).join("");
@@ -305,8 +322,9 @@ async function requestJson(url, body) {
 function renderError(message) {
   providerPanel.className = "provider-panel has-error";
   providerPanel.innerHTML = `
-    <p class="muted">解析失败</p>
+    <p class="section-kicker">解析失败</p>
     <h2>${escapeHtml(message)}</h2>
+    <p class="muted">请检查链接是否完整，或尝试重新粘贴。</p>
   `;
 }
 
@@ -337,4 +355,23 @@ function escapeHtml(value) {
     .replaceAll('"', "&quot;");
 }
 
-loadJobs();
+function escapeAttr(value) {
+  return escapeHtml(value).replaceAll("'", "&#39;");
+}
+
+function showToast(message, isError = false) {
+  clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.classList.toggle("is-error", isError);
+  toast.hidden = false;
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 3600);
+}
+
+loadJobs().then(() => {
+  const hasRunningJob = document.querySelector(".status-running, .status-queued");
+  if (hasRunningJob) startPolling();
+}).catch(() => {
+  jobsList.innerHTML = `<p class="error-text empty-list">暂时无法读取任务，请稍后刷新。</p>`;
+});

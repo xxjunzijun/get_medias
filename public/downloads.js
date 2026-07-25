@@ -2,12 +2,16 @@ const downloadsNav = document.querySelector("#downloadsNav");
 const downloadsList = document.querySelector("#downloadsList");
 const refreshDownloads = document.querySelector("#refreshDownloads");
 const librarySummary = document.querySelector("#librarySummary");
+const librarySearch = document.querySelector("#librarySearch");
+const visibleTaskCount = document.querySelector("#visibleTaskCount");
+const filterPills = document.querySelector(".filter-pills");
 const lightbox = document.querySelector("#lightbox");
 const lightboxImage = document.querySelector("#lightboxImage");
 const lightboxCaption = document.querySelector("#lightboxCaption");
 const closeLightbox = document.querySelector("#closeLightbox");
 const prevLightbox = document.querySelector("#prevLightbox");
 const nextLightbox = document.querySelector("#nextLightbox");
+const toast = document.querySelector("#toast");
 
 const siteOrder = ["bilibili", "youtube", "pixiv"];
 const siteLabels = {
@@ -20,8 +24,26 @@ let currentGroups = [];
 let selectedGroupPath = "";
 let currentImages = [];
 let currentImageIndex = 0;
+let activeSiteFilter = "all";
+let searchTerm = "";
+let toastTimer = null;
 
 refreshDownloads.addEventListener("click", loadDownloads);
+librarySearch.addEventListener("input", (event) => {
+  searchTerm = event.currentTarget.value.trim().toLocaleLowerCase();
+  ensureVisibleSelection();
+  renderLibrary();
+});
+filterPills.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-site-filter]");
+  if (!button) return;
+  activeSiteFilter = button.dataset.siteFilter;
+  filterPills.querySelectorAll("[data-site-filter]").forEach((item) => {
+    item.classList.toggle("is-active", item === button);
+  });
+  ensureVisibleSelection();
+  renderLibrary();
+});
 downloadsNav.addEventListener("click", handleNavClick);
 downloadsList.addEventListener("click", handleContentClick);
 closeLightbox.addEventListener("click", hideLightbox);
@@ -43,9 +65,7 @@ async function loadDownloads() {
 
   const data = await fetch("/api/downloads").then((response) => response.json());
   currentGroups = buildTaskGroups(data.items || []);
-  if (!currentGroups.some((group) => group.path === selectedGroupPath)) {
-    selectedGroupPath = currentGroups[0]?.path || "";
-  }
+  ensureVisibleSelection();
   renderLibrary();
 }
 
@@ -110,20 +130,23 @@ function compareNewestFirst(left, right) {
 function renderLibrary() {
   const fileCount = currentGroups.reduce((sum, group) => sum + group.files.length, 0);
   librarySummary.textContent = currentGroups.length
-    ? `${currentGroups.length} 个任务，${fileCount} 个文件`
+    ? `${currentGroups.length} 个任务 · ${fileCount} 个文件`
     : "暂无已下载内容";
+  visibleTaskCount.textContent = visibleGroups().length;
 
   renderSidebar();
   renderSelectedGroup();
 }
 
 function renderSidebar() {
+  const filteredGroups = visibleGroups();
   const groupsBySite = Object.groupBy
-    ? Object.groupBy(currentGroups, (group) => group.site)
-    : groupBySite(currentGroups);
+    ? Object.groupBy(filteredGroups, (group) => group.site)
+    : groupBySite(filteredGroups);
 
-  downloadsNav.innerHTML = siteOrder.map((site) => {
+  const sections = siteOrder.map((site) => {
     const groups = groupsBySite[site] || [];
+    if (activeSiteFilter !== "all" && activeSiteFilter !== site) return "";
     return `
       <section class="nav-section">
         <div class="nav-section-title">
@@ -136,21 +159,36 @@ function renderSidebar() {
       </section>
     `;
   }).join("");
+
+  downloadsNav.innerHTML = filteredGroups.length
+    ? sections
+    : `<p class="muted empty-list">没有匹配的下载任务</p>`;
 }
 
 function renderNavTask(group) {
+  const isImageCollection = group.files.length > 0
+    && group.files.every((file) => file.mediaType === "image");
+  const thumbnail = isImageCollection
+    ? `<img class="nav-task-thumb" src="${escapeAttr(group.files[0].mediaUrl)}" alt="">`
+    : `<span class="nav-task-icon" aria-hidden="true">${mediaGroupIcon(group)}</span>`;
+
   return `
     <button class="nav-task ${group.path === selectedGroupPath ? "is-active" : ""}" type="button" data-select-path="${escapeAttr(group.path)}">
-      <span>${escapeHtml(group.title)}</span>
-      <small>${group.files.length} 个文件 · ${formatBytes(group.size)}</small>
+      ${thumbnail}
+      <span class="nav-task-copy">
+        <strong>${escapeHtml(group.title)}</strong>
+        <small>${group.files.length} 个文件 · ${formatBytes(group.size)}</small>
+      </span>
     </button>
   `;
 }
 
 function renderSelectedGroup() {
-  const group = currentGroups.find((item) => item.path === selectedGroupPath);
+  const group = visibleGroups().find((item) => item.path === selectedGroupPath);
   if (!group) {
-    downloadsList.innerHTML = renderEmptyState("左侧选择一个下载任务");
+    downloadsList.innerHTML = renderEmptyState(
+      currentGroups.length ? "没有找到匹配内容，试试其他关键词" : "下载完成的内容会出现在这里",
+    );
     return;
   }
 
@@ -187,17 +225,17 @@ function renderImageGrid(images) {
         <span>${images.length}</span>
       </div>
       <div class="masonry-grid">
-        ${images.map(renderImageTile).join("")}
+        ${images.map((file, index) => renderImageTile(file, index)).join("")}
       </div>
     </section>
   `;
 }
 
-function renderImageTile(file) {
+function renderImageTile(file, index) {
   return `
-    <figure class="image-tile">
+    <figure class="image-tile" style="--tile-index: ${Math.min(index, 12)}">
       <button type="button" data-view-image="${escapeAttr(file.path)}">
-        <img src="${file.mediaUrl}" alt="">
+        <img src="${escapeAttr(file.mediaUrl)}" alt="${escapeAttr(file.name)}" loading="lazy">
       </button>
       <figcaption>
         <span>${escapeHtml(file.name)}</span>
@@ -273,12 +311,13 @@ async function handleContentClick(event) {
 
   if (!response.ok) {
     const data = await response.json().catch(() => ({}));
-    alert(data.error || "删除失败");
+    showToast(data.error || "删除失败", true);
     button.disabled = false;
     button.textContent = button.classList.contains("danger-button") ? "删除任务" : "删除";
     return;
   }
 
+  showToast(`已删除「${targetName}」`);
   await loadDownloads();
 }
 
@@ -294,8 +333,13 @@ function renderLightbox() {
   const image = currentImages[currentImageIndex];
   if (!image) return;
 
+  lightboxImage.classList.remove("is-switching");
+  void lightboxImage.offsetWidth;
   lightboxImage.src = image.mediaUrl;
+  lightboxImage.alt = image.name;
   lightboxCaption.textContent = `${image.name} · ${currentImageIndex + 1} / ${currentImages.length}`;
+  lightboxImage.classList.add("is-switching");
+  preloadAdjacentImages();
 }
 
 function moveLightbox(delta) {
@@ -307,6 +351,7 @@ function moveLightbox(delta) {
 function hideLightbox() {
   lightbox.hidden = true;
   lightboxImage.removeAttribute("src");
+  lightboxImage.removeAttribute("alt");
 }
 
 function groupBySite(groups) {
@@ -317,8 +362,53 @@ function groupBySite(groups) {
   }, {});
 }
 
+function mediaGroupIcon(group) {
+  if (group.files.some((file) => file.mediaType === "video")) return "▶";
+  if (group.files.some((file) => file.mediaType === "audio")) return "♪";
+  return "•";
+}
+
+function preloadAdjacentImages() {
+  if (currentImages.length < 2) return;
+  [-1, 1].forEach((delta) => {
+    const index = (currentImageIndex + delta + currentImages.length) % currentImages.length;
+    const preview = new Image();
+    preview.src = currentImages[index].mediaUrl;
+  });
+}
+
+function visibleGroups() {
+  return currentGroups.filter((group) => {
+    if (activeSiteFilter !== "all" && group.site !== activeSiteFilter) return false;
+    if (!searchTerm) return true;
+
+    const searchable = [
+      group.title,
+      group.site,
+      group.metadata?.sourceUrl,
+      ...group.files.map((file) => file.name),
+    ].filter(Boolean).join(" ").toLocaleLowerCase();
+
+    return searchable.includes(searchTerm);
+  });
+}
+
+function ensureVisibleSelection() {
+  const groups = visibleGroups();
+  if (!groups.some((group) => group.path === selectedGroupPath)) {
+    selectedGroupPath = groups[0]?.path || "";
+  }
+}
+
 function renderEmptyState(text) {
-  return `<div class="empty-panel"><p class="muted">${escapeHtml(text)}</p></div>`;
+  return `
+    <div class="empty-panel">
+      <div class="empty-copy">
+        <p class="section-kicker">Media Library</p>
+        <h2>${escapeHtml(text)}</h2>
+      </div>
+    </div>
+  `;
 }
 
 function formatBytes(bytes) {
@@ -340,4 +430,18 @@ function escapeAttr(value) {
   return escapeHtml(value).replaceAll("'", "&#39;");
 }
 
-loadDownloads();
+function showToast(message, isError = false) {
+  clearTimeout(toastTimer);
+  toast.textContent = message;
+  toast.classList.toggle("is-error", isError);
+  toast.hidden = false;
+  toastTimer = setTimeout(() => {
+    toast.hidden = true;
+  }, 3600);
+}
+
+loadDownloads().catch(() => {
+  librarySummary.textContent = "读取失败";
+  downloadsNav.innerHTML = `<p class="error-text empty-list">暂时无法读取媒体库</p>`;
+  downloadsList.innerHTML = renderEmptyState("请确认服务正在运行后重试");
+});

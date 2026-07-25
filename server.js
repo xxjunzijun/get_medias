@@ -66,8 +66,10 @@ function readJson(req) {
 }
 
 function normalizePublicPath(urlPath) {
-  const safePath = path.normalize(decodeURIComponent(urlPath)).replace(/^(\.\.[/\\])+/, "");
-  return safePath === "/" ? "/index.html" : safePath;
+  if (urlPath === "/") return "index.html";
+  return path.normalize(decodeURIComponent(urlPath))
+    .replace(/^(\.\.[/\\])+/, "")
+    .replace(/^[/\\]+/, "");
 }
 
 async function serveStatic(req, res, pathname) {

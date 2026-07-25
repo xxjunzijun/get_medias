@@ -206,7 +206,14 @@ function renderSelectedGroup() {
           <p>${group.files.length} 个文件 · ${formatBytes(group.size)} · ${new Date(group.updatedAt).toLocaleString()}</p>
           ${group.metadata?.sourceUrl ? `<a class="source-link" href="${escapeAttr(group.metadata.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(group.metadata.sourceUrl)}</a>` : ""}
         </div>
-        <button class="danger-button" type="button" data-delete-path="${escapeAttr(group.path)}" data-delete-name="${escapeAttr(group.title)}">删除任务</button>
+        <div class="media-detail-actions">
+          ${group.metadata?.sourceUrl ? `
+            <button class="redownload-button" type="button" data-redownload-path="${escapeAttr(group.path)}">
+              <span aria-hidden="true">↻</span> 重新下载
+            </button>
+          ` : ""}
+          <button class="danger-button" type="button" data-delete-path="${escapeAttr(group.path)}" data-delete-name="${escapeAttr(group.title)}">删除任务</button>
+        </div>
       </header>
 
       ${images.length ? renderImageGrid(images) : ""}
@@ -293,6 +300,12 @@ async function handleContentClick(event) {
     return;
   }
 
+  const redownloadButton = event.target.closest("[data-redownload-path]");
+  if (redownloadButton) {
+    await redownloadGroup(redownloadButton);
+    return;
+  }
+
   const button = event.target.closest("[data-delete-path]");
   if (!button) return;
 
@@ -319,6 +332,45 @@ async function handleContentClick(event) {
 
   showToast(`已删除「${targetName}」`);
   await loadDownloads();
+}
+
+async function redownloadGroup(button) {
+  const group = currentGroups.find((item) => item.path === button.dataset.redownloadPath);
+  const sourceUrl = group?.metadata?.sourceUrl;
+  if (!sourceUrl) {
+    showToast("这个旧任务没有保存来源链接，无法快速重新下载", true);
+    return;
+  }
+
+  const originalText = button.innerHTML;
+  button.disabled = true;
+  button.textContent = "正在加入队列";
+
+  try {
+    const response = await fetch("/api/download", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        url: sourceUrl,
+        format: group.metadata.format || defaultFormatForSite(group.site),
+      }),
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(data.error || "任务创建失败");
+
+    button.textContent = "已加入队列";
+    showToast(`已重新下载「${group.title}」，可前往下载器查看进度`);
+  } catch (error) {
+    button.innerHTML = originalText;
+    button.disabled = false;
+    showToast(`重新下载失败：${error.message}`, true);
+    return;
+  }
+
+  setTimeout(() => {
+    button.innerHTML = originalText;
+    button.disabled = false;
+  }, 1800);
 }
 
 function showLightbox(path) {
@@ -366,6 +418,10 @@ function mediaGroupIcon(group) {
   if (group.files.some((file) => file.mediaType === "video")) return "▶";
   if (group.files.some((file) => file.mediaType === "audio")) return "♪";
   return "•";
+}
+
+function defaultFormatForSite(site) {
+  return site === "pixiv" ? "images" : "mp4";
 }
 
 function preloadAdjacentImages() {

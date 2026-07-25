@@ -1094,6 +1094,23 @@ pre {
   color: var(--muted);
 }
 
+.media-detail-actions {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 9px;
+}
+
+.redownload-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  background: var(--accent);
+  color: white;
+  box-shadow: 0 8px 18px rgba(158, 63, 39, 0.16);
+}
+
 .source-link {
   display: inline-block;
   max-width: min(720px, 100%);
@@ -1469,6 +1486,11 @@ pre {
   .library-hero {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .media-detail-actions {
+    width: 100%;
+    justify-content: flex-start;
   }
 
   .job-topline {

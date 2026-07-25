@@ -11,11 +11,15 @@ export function startDownload(job, provider, request) {
   queueMicrotask(async () => {
     let plan;
     try {
+      const targetDir = request.targetPath
+        ? resolveTargetDir(request.targetPath)
+        : null;
       plan = await provider.createDownloadPlan({
         jobId: job.id,
         url: request.url,
         format: request.format,
         outputDir: downloadsDir,
+        targetDir,
       });
     } catch (error) {
       updateJob(job.id, {
@@ -61,6 +65,15 @@ export function startDownload(job, provider, request) {
       }
     });
   });
+}
+
+function resolveTargetDir(targetPath) {
+  const candidate = path.resolve(downloadsDir, String(targetPath));
+  const relative = path.relative(downloadsDir, candidate);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error("Invalid download target.");
+  }
+  return candidate;
 }
 
 function writeTaskMetadata(plan, job, provider, request) {

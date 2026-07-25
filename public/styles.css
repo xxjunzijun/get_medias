@@ -60,6 +60,7 @@ a {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
+select:focus-visible,
 summary:focus-visible {
   outline: 3px solid rgba(199, 93, 58, 0.28);
   outline-offset: 3px;
@@ -913,6 +914,32 @@ pre {
   color: var(--accent-strong);
 }
 
+.sort-control {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  padding: 0 9px 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--panel-strong);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.sort-control select {
+  min-height: 32px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
 .media-browser {
   display: grid;
   grid-template-columns: 300px minmax(0, 1fr);
@@ -973,26 +1000,73 @@ pre {
   border-top: 1px solid var(--line);
 }
 
-.nav-section-title {
+.nav-section-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 7px 8px;
+  width: 100%;
+  min-height: 35px;
+  padding: 3px 7px 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
   color: var(--muted);
   font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.05em;
+  text-align: left;
   text-transform: uppercase;
 }
 
-.nav-section-title small {
+.nav-section-toggle:hover {
+  background: var(--panel-soft);
+  color: var(--ink-soft);
+  transform: none;
+}
+
+.nav-section-title-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-section-chevron {
+  display: inline-block;
+  color: var(--accent);
+  font-size: 18px;
+  line-height: 1;
+  transform: rotate(90deg);
+  transition: transform 180ms ease;
+}
+
+.nav-section-toggle[aria-expanded="false"] .nav-section-chevron {
+  transform: rotate(0);
+}
+
+.nav-section-toggle small {
   color: var(--accent-strong);
 }
 
 .nav-task-list {
   display: grid;
   gap: 5px;
+  animation: nav-list-enter 180ms ease-out;
+}
+
+.nav-task-list[hidden] {
+  display: none;
+}
+
+@keyframes nav-list-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .nav-task {
@@ -1525,6 +1599,11 @@ pre {
 
   .filter-pills {
     flex: 1 1 100%;
+  }
+
+  .sort-control {
+    flex: 1 1 auto;
+    justify-content: space-between;
   }
 
   .media-browser {

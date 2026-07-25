@@ -86,9 +86,10 @@ async function serveStatic(req, res, pathname) {
 }
 
 function resolveDownloadPath(relativePath = "") {
-  const normalized = path.normalize(decodeURIComponent(relativePath)).replace(/^(\.\.[/\\])+/, "");
-  const filePath = path.join(downloadsDir, normalized);
-  if (!filePath.startsWith(downloadsDir)) {
+  const normalized = path.normalize(decodeURIComponent(relativePath)).replace(/^[/\\]+/, "");
+  const filePath = path.resolve(downloadsDir, normalized);
+  const relative = path.relative(downloadsDir, filePath);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
     throw new Error("Invalid download path.");
   }
   return filePath;
@@ -178,6 +179,13 @@ async function router(req, res) {
     if (req.method === "POST" && requestUrl.pathname === "/api/download") {
       const body = await readJson(req);
       const provider = resolveProvider(body.url);
+      if (body.targetPath) {
+        const targetDir = resolveDownloadPath(String(body.targetPath));
+        if (!existsSync(targetDir) || !(await stat(targetDir)).isDirectory()) {
+          throw new Error("重新下载的目标任务不存在。");
+        }
+        body.targetPath = path.relative(downloadsDir, targetDir);
+      }
       const job = createJob(provider.describe(body.url), body);
       startDownload(job, provider, body);
       sendJson(res, 202, { job });

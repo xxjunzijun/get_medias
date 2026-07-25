@@ -36,7 +36,7 @@ export const pixivProvider = {
     };
   },
 
-  async createDownloadPlan({ jobId, url, outputDir }) {
+  async createDownloadPlan({ jobId, url, outputDir, targetDir }) {
     const siteDir = path.join(outputDir, "pixiv");
     const metadata = await readPixivMetadata(url).catch(() => null);
     const shortJobId = jobId.split("-")[0];
@@ -47,7 +47,7 @@ export const pixivProvider = {
       ].filter(Boolean).join(" "),
       `pixiv-task ${shortJobId}`,
     );
-    const taskDir = path.join(siteDir, taskName);
+    const taskDir = targetDir || path.join(siteDir, taskName);
 
     return {
       command: galleryDlBin(),

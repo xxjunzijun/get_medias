@@ -3,6 +3,7 @@ const downloadsList = document.querySelector("#downloadsList");
 const refreshDownloads = document.querySelector("#refreshDownloads");
 const librarySummary = document.querySelector("#librarySummary");
 const librarySearch = document.querySelector("#librarySearch");
+const librarySort = document.querySelector("#librarySort");
 const visibleTaskCount = document.querySelector("#visibleTaskCount");
 const filterPills = document.querySelector(".filter-pills");
 const lightbox = document.querySelector("#lightbox");
@@ -26,6 +27,8 @@ let currentImages = [];
 let currentImageIndex = 0;
 let activeSiteFilter = "all";
 let searchTerm = "";
+let sortMode = "updated";
+const collapsedSites = new Set();
 let toastTimer = null;
 
 refreshDownloads.addEventListener("click", loadDownloads);
@@ -42,6 +45,10 @@ filterPills.addEventListener("click", (event) => {
     item.classList.toggle("is-active", item === button);
   });
   ensureVisibleSelection();
+  renderLibrary();
+});
+librarySort.addEventListener("change", (event) => {
+  sortMode = event.currentTarget.value;
   renderLibrary();
 });
 downloadsNav.addEventListener("click", handleNavClick);
@@ -147,13 +154,17 @@ function renderSidebar() {
   const sections = siteOrder.map((site) => {
     const groups = groupsBySite[site] || [];
     if (activeSiteFilter !== "all" && activeSiteFilter !== site) return "";
+    const isCollapsed = collapsedSites.has(site);
     return `
       <section class="nav-section">
-        <div class="nav-section-title">
-          <span>${escapeHtml(siteLabels[site])}</span>
+        <button class="nav-section-toggle" type="button" data-toggle-site="${escapeAttr(site)}" aria-expanded="${!isCollapsed}">
+          <span class="nav-section-title-label">
+            <span class="nav-section-chevron" aria-hidden="true">›</span>
+            ${escapeHtml(siteLabels[site])}
+          </span>
           <small>${groups.length}</small>
-        </div>
-        <div class="nav-task-list">
+        </button>
+        <div class="nav-task-list" ${isCollapsed ? "hidden" : ""}>
           ${groups.length ? groups.map(renderNavTask).join("") : `<p class="muted nav-empty">暂无任务</p>`}
         </div>
       </section>
@@ -286,6 +297,18 @@ function renderMediaRow(file) {
 }
 
 async function handleNavClick(event) {
+  const toggle = event.target.closest("[data-toggle-site]");
+  if (toggle) {
+    const site = toggle.dataset.toggleSite;
+    if (collapsedSites.has(site)) {
+      collapsedSites.delete(site);
+    } else {
+      collapsedSites.add(site);
+    }
+    renderSidebar();
+    return;
+  }
+
   const task = event.target.closest("[data-select-path]");
   if (!task) return;
   selectedGroupPath = task.dataset.selectPath;
@@ -353,13 +376,14 @@ async function redownloadGroup(button) {
       body: JSON.stringify({
         url: sourceUrl,
         format: group.metadata.format || defaultFormatForSite(group.site),
+        targetPath: group.path,
       }),
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || "任务创建失败");
 
     button.textContent = "已加入队列";
-    showToast(`已重新下载「${group.title}」，可前往下载器查看进度`);
+    showToast(`已在当前任务中重新下载「${group.title}」，可前往下载器查看进度`);
   } catch (error) {
     button.innerHTML = originalText;
     button.disabled = false;
@@ -446,6 +470,14 @@ function visibleGroups() {
     ].filter(Boolean).join(" ").toLocaleLowerCase();
 
     return searchable.includes(searchTerm);
+  }).sort((left, right) => {
+    if (sortMode === "name") {
+      return left.title.localeCompare(right.title, "zh-Hans-CN", {
+        numeric: true,
+        sensitivity: "base",
+      });
+    }
+    return compareNewestFirst(left.updatedAt, right.updatedAt);
   });
 }
 

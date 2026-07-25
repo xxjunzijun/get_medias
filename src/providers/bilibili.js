@@ -31,14 +31,14 @@ export const bilibiliProvider = {
     };
   },
 
-  async createDownloadPlan({ jobId, url, format, outputDir }) {
+  async createDownloadPlan({ jobId, url, format, outputDir, targetDir }) {
     const siteDir = path.join(outputDir, "bilibili");
     const metadata = await readYtDlpMetadata(url).catch(() => null);
     const shortJobId = jobId.split("-")[0];
     const taskTitle = metadata?.title && metadata?.id
       ? `${metadata.title} [${metadata.id}]`
       : metadata?.title || metadata?.id || "bilibili-task";
-    const taskDir = path.join(siteDir, safeSegment(`${taskTitle} ${shortJobId}`, `bilibili-task ${shortJobId}`));
+    const taskDir = targetDir || path.join(siteDir, safeSegment(`${taskTitle} ${shortJobId}`, `bilibili-task ${shortJobId}`));
     const outputTemplate = path.join(taskDir, "%(title).180B [%(id)s].%(ext)s");
     const args = [
       "--newline",
